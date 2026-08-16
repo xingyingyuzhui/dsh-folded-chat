@@ -12,6 +12,8 @@ English UI follows the DSH locale.
 [助手正文]            始终可见
 ```
 
+![聊天主视图两层折叠](docs/chat.jpg)
+
 ## 安装
 
 前置：本机已能运行 `dsh web`。
@@ -23,6 +25,8 @@ dsh plugin --profile web add github:xingyingyuzhui/dsh-folded-chat
 装完重启 `dsh web`。打开 **设置 → 插件 → 插件配置 → 过程折叠**。
 
 ## 设置
+
+![设置 → 插件 → 插件配置](docs/settings.jpg)
 
 | 开关 | 作用 |
 |---|---|
