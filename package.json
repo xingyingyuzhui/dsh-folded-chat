@@ -1,0 +1,29 @@
+{
+  "name": "dsh-folded-chat",
+  "version": "0.2.0",
+  "description": "Two-level fold for DeepSeek Harness chat: collapse think+tools as a process, then fold tool rows separately. Official cards stay intact. 聊天主视图两层折叠：过程一层、工具一层，不替换官方卡片。",
+  "keywords": ["dsh", "dsh-plugin", "deepseek-harness", "chat", "fold"],
+  "license": "MIT",
+  "type": "module",
+  "main": "./host.js",
+  "exports": {
+    ".": "./host.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["host.js", "client.js", "fold-logic.mjs", "fold-i18n.mjs", "fold-prefs.mjs", "fold-settings.mjs", "fold-runtime.mjs", "cordis.patch.yml", "README.md", "LICENSE"],
+  "engines": { "node": ">=20" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xingyingyuzhui/dsh-folded-chat.git"
+  },
+  "scripts": {
+    "build": "node scripts/build-client.mjs",
+    "build:check": "node scripts/build-client.mjs --check",
+    "test": "npm run build:check && node --test test/*.test.mjs"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web" }
+  }
+}

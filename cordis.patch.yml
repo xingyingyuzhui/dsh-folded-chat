@@ -1,0 +1,4 @@
+# dsh bundle layer: mount the two-level chat process fold (client overlay).
+- insert:
+    - id: dsh-folded-chat
+      name: dsh-folded-chat
