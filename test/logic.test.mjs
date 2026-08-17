@@ -80,10 +80,12 @@ test('groupFlowRows keeps think-only steps and following tool rows', () => {
   assert.equal(groups[0].key, 's1')
   assert.deepEqual(groups[0].tools, ['t1', 't2'])
   assert.equal(groups[0].running, true)
+  assert.equal(groups[0].settled, true)
   assert.deepEqual(groups[0].hideRows, ['a'])
   assert.equal(groups[1].key, 's2')
   assert.equal(groups[1].toolCount, 0)
   assert.equal(groups[1].running, false)
+  assert.equal(groups[1].settled, true)
 })
 
 test('groupFlowRows merges think-only steps until visible output', () => {
@@ -103,8 +105,22 @@ test('groupFlowRows merges think-only steps until visible output', () => {
   assert.deepEqual(groups[0].hideRows, ['s1', 's2'])
   assert.deepEqual(groups[0].tools, ['t1', 't2', 't3'])
   assert.equal(groups[0].running, true)
+  assert.equal(groups[0].settled, true)
   assert.equal(groups[1].key, 'a4')
   assert.deepEqual(groups[1].hideRows, [])
+  assert.equal(groups[1].settled, true)
+})
+
+test('groupFlowRows does not break a live process on a think-less assistant placeholder', () => {
+  const s1 = { el: 's1', kind: 'assistant-step', anchor: 'a1', hasThink: true, hasVisibleOutput: false, running: false }
+  const t1 = { el: 't1', kind: 'tool-call', anchor: 'c1', hasThink: false, running: false }
+  const placeholder = { el: 'p', kind: 'assistant-step', anchor: 'a2', hasThink: false, hasVisibleOutput: false, running: false }
+  const s2 = { el: 's2', kind: 'assistant-step', anchor: 'a2', hasThink: true, hasVisibleOutput: false, running: true }
+  const groups = groupFlowRows([s1, t1, placeholder, s2])
+  assert.equal(groups.length, 1)
+  assert.deepEqual(groups[0].thinkRows, ['s1', 's2'])
+  assert.equal(groups[0].settled, false)
+  assert.equal(groups[0].running, true)
 })
 
 test('groupFlowRows skips assistant-step rows without a stable key', () => {
@@ -122,11 +138,15 @@ test('settled groups default both layers collapsed; running groups stay open', (
   })
 })
 
-test('untouched state follows running; touched state is sticky', () => {
-  const auto = reconcileFoldState(defaultFoldState(true), false)
+test('untouched settled state follows running; live process does not auto-collapse', () => {
+  const auto = reconcileFoldState(defaultFoldState(true), false, null, true)
   assert.equal(auto.outer, 'collapsed')
+  const gap = reconcileFoldState(defaultFoldState(true), false, null, false)
+  assert.equal(gap.outer, 'open')
+  const firstIdleLive = reconcileFoldState(null, false, null, false)
+  assert.equal(firstIdleLive.outer, 'open')
   const touched = toggleLayer(defaultFoldState(true), 'outer')
-  const kept = reconcileFoldState(touched, false)
+  const kept = reconcileFoldState(touched, false, null, true)
   assert.equal(kept.outer, 'collapsed')
   assert.equal(kept.touched, true)
   assert.equal(kept.inner, 'open')

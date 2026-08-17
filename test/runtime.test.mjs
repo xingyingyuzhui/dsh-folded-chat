@@ -164,6 +164,27 @@ test('two-level: expanding outer keeps tools folded until inner opens', () => {
   assert.equal(tool.style.display, '')
 })
 
+test('idle gap in a live think+tool process stays expanded', () => {
+  const doc = createDoc()
+  const think = seat(doc, 'assistant-step', 'step:gap', { think: true, running: true })
+  const tool = seat(doc, 'tool-call', 'call:gap', {})
+  doc.list.appendChild(think)
+  doc.list.appendChild(tool)
+  const ctrl = createFoldController(doc)
+  ctrl.sync()
+  assert.equal(think.querySelector('[data-variant="think"]').style.display, '')
+  think.querySelector('[data-variant="think"]').setAttribute('data-state', 'ok')
+  ctrl.sync()
+  assert.equal(think.querySelector('[data-variant="think"]').style.display, '')
+  assert.equal(tool.style.display, '')
+  const answer = doc.el('p', {})
+  answer.childNodes.push({ nodeType: 3, textContent: '可见正文', childNodes: [] })
+  think.appendChild(answer)
+  ctrl.sync()
+  assert.equal(think.querySelector('[data-variant="think"]').style.display, 'none')
+  assert.equal(tool.style.display, 'none')
+})
+
 test('running groups stay expanded', () => {
   const doc = createDoc()
   const think = seat(doc, 'assistant-step', 'step:3', { think: true, running: true })

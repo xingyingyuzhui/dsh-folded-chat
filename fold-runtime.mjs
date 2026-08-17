@@ -155,7 +155,7 @@ export function createFoldController(doc, options) {
 
     for (const group of groups) {
       live.add(group.key)
-      const next = reconcileFoldState(map.get(group.key), group.running, getPrefs())
+      const next = reconcileFoldState(map.get(group.key), group.running, getPrefs(), group.settled === true)
       map.set(group.key, next)
       const vis = visibilityOf(next, group.toolCount)
 

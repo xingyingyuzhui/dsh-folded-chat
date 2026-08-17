@@ -78,6 +78,13 @@ function takeProcessPiece(rows, start) {
   }
 }
 
+function isProcessPlaceholder(row) {
+  return row != null
+    && row.kind === 'assistant-step'
+    && row.hasThink !== true
+    && row.hasVisibleOutput !== true
+}
+
 function groupFlowRows(rows) {
   const groups = []
   let i = 0
@@ -85,7 +92,11 @@ function groupFlowRows(rows) {
   while (i < rows.length) {
     const piece = takeProcessPiece(rows, i)
     if (piece == null) {
-      if (rows[i] != null && rows[i].kind !== 'tool-call') open = null
+      const row = rows[i]
+      if (row != null && row.kind !== 'tool-call' && !isProcessPlaceholder(row) && open != null) {
+        open.settled = true
+        open = null
+      }
       i += 1
       continue
     }
@@ -95,7 +106,10 @@ function groupFlowRows(rows) {
       for (let t = 0; t < piece.tools.length; t++) open.tools.push(piece.tools[t].el)
       open.toolCount = open.tools.length
       if (piece.running) open.running = true
-      if (piece.hasVisibleOutput) open = null
+      if (piece.hasVisibleOutput) {
+        open.settled = true
+        open = null
+      }
       i = piece.end
       continue
     }
@@ -107,6 +121,7 @@ function groupFlowRows(rows) {
       tools: piece.tools.map((item) => item.el),
       toolCount: piece.tools.length,
       running: piece.running,
+      settled: piece.hasVisibleOutput === true,
     }
     groups.push(group)
     open = piece.hasVisibleOutput ? null : group
@@ -126,10 +141,14 @@ function defaultFoldState(running, prefs) {
   }
 }
 
-function reconcileFoldState(existing, running, prefs) {
-  if (existing == null) return defaultFoldState(running, prefs)
-  if (existing.touched === true) return existing
-  return defaultFoldState(running, prefs)
+function reconcileFoldState(existing, running, prefs, settled) {
+  if (existing != null && existing.touched === true) return existing
+  if (running) return defaultFoldState(true, prefs)
+  if (settled !== true) {
+    if (existing != null) return existing
+    return defaultFoldState(true, prefs)
+  }
+  return defaultFoldState(false, prefs)
 }
 
 function toggleLayer(state, layer) {
@@ -521,7 +540,7 @@ function createFoldController(doc, options) {
 
     for (const group of groups) {
       live.add(group.key)
-      const next = reconcileFoldState(map.get(group.key), group.running, getPrefs())
+      const next = reconcileFoldState(map.get(group.key), group.running, getPrefs(), group.settled === true)
       map.set(group.key, next)
       const vis = visibilityOf(next, group.toolCount)
 
