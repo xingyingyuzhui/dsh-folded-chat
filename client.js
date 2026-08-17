@@ -140,6 +140,16 @@ function toggleLayer(state, layer) {
   return next
 }
 
+function processCountParts(thinkCount, toolCount) {
+  const thinks = thinkCount > 0 ? thinkCount : 0
+  const tools = toolCount > 0 ? toolCount : 0
+  const parts = []
+  if (thinks > 0) parts.push({ key: 'thinks', count: thinks })
+  if (tools > 0) parts.push({ key: 'tools', count: tools })
+  if (parts.length === 0) parts.push({ key: 'thinking', count: 0 })
+  return parts
+}
+
 function visibilityOf(state, toolCount) {
   const outerOpen = state != null && state.outer === 'open'
   const innerOpen = state != null && state.inner === 'open'
@@ -157,6 +167,7 @@ const COPY = {
     process: '过程',
     processOpen: '过程（点击收起）',
     tools: '工具 ×{count}',
+    thinks: '思考 ×{count}',
     thinking: '思考',
     toolCalls: '工具调用',
     toolCallsOpen: '工具调用（点击收起）',
@@ -171,6 +182,7 @@ const COPY = {
     process: 'Process',
     processOpen: 'Process (collapse)',
     tools: 'Tools ×{count}',
+    thinks: 'Think ×{count}',
     thinking: 'Thinking',
     toolCalls: 'Tool calls',
     toolCallsOpen: 'Tool calls (collapse)',
@@ -478,14 +490,18 @@ function createFoldController(doc, options) {
     return bar
   }
 
-  function paintBar(bar, layer, open, toolCount) {
+  function paintBar(bar, layer, open, counts) {
+    const thinkCount = counts && counts.thinkCount ? counts.thinkCount : 0
+    const toolCount = counts && counts.toolCount ? counts.toolCount : 0
     bar.setAttribute('data-open', open ? 'true' : 'false')
     bar.setAttribute('aria-expanded', open ? 'true' : 'false')
     const label = bar.querySelector('.dsh-folded-chat-label')
     const count = bar.querySelector('.dsh-folded-chat-count')
     if (layer === 'outer') {
       label.textContent = open ? t('processOpen') : t('process')
-      count.textContent = toolCount > 0 ? t('tools', { count: toolCount }) : t('thinking')
+      count.textContent = processCountParts(thinkCount, toolCount)
+        .map(function (part) { return t(part.key, { count: part.count }) })
+        .join(' · ')
     } else {
       label.textContent = open ? t('toolCallsOpen') : t('toolCalls')
       count.textContent = t('toolCount', { count: toolCount })
@@ -516,7 +532,10 @@ function createFoldController(doc, options) {
           syncRoot(root)
         })
       }
-      paintBar(outer, 'outer', next.outer === 'open', group.toolCount)
+      paintBar(outer, 'outer', next.outer === 'open', {
+        thinkCount: group.thinkRows.length,
+        toolCount: group.toolCount,
+      })
       placeBefore(outer, group.startRow)
 
       for (let r = 0; r < group.thinkRows.length; r++) {
@@ -537,7 +556,7 @@ function createFoldController(doc, options) {
             syncRoot(root)
           })
         }
-        paintBar(inner, 'inner', next.inner === 'open', group.toolCount)
+        paintBar(inner, 'inner', next.inner === 'open', { toolCount: group.toolCount })
         placeBefore(inner, group.tools[0])
       } else {
         const inner = findBar(root, group.key, 'inner')

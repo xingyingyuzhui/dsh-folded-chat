@@ -16,6 +16,8 @@ test('translate interpolates both locales', () => {
   assert.equal(translate('en', 'process'), 'Process')
   assert.equal(translate('en', 'tools', { count: 3 }), 'Tools ×3')
   assert.equal(translate('zh', 'tools', { count: 3 }), '工具 ×3')
+  assert.equal(translate('zh', 'thinks', { count: 5 }), '思考 ×5')
+  assert.equal(translate('en', 'thinks', { count: 5 }), 'Think ×5')
 })
 
 test('prefs default to enabled with both layers collapsed', () => {

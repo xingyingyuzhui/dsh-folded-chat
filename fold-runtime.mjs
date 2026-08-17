@@ -2,6 +2,7 @@ import {
   describeRow,
   groupFlowRows,
   nextElementNode,
+  processCountParts,
   reconcileFoldState,
   toggleLayer,
   visibilityOf,
@@ -123,14 +124,18 @@ export function createFoldController(doc, options) {
     return bar
   }
 
-  function paintBar(bar, layer, open, toolCount) {
+  function paintBar(bar, layer, open, counts) {
+    const thinkCount = counts && counts.thinkCount ? counts.thinkCount : 0
+    const toolCount = counts && counts.toolCount ? counts.toolCount : 0
     bar.setAttribute('data-open', open ? 'true' : 'false')
     bar.setAttribute('aria-expanded', open ? 'true' : 'false')
     const label = bar.querySelector('.dsh-folded-chat-label')
     const count = bar.querySelector('.dsh-folded-chat-count')
     if (layer === 'outer') {
       label.textContent = open ? t('processOpen') : t('process')
-      count.textContent = toolCount > 0 ? t('tools', { count: toolCount }) : t('thinking')
+      count.textContent = processCountParts(thinkCount, toolCount)
+        .map(function (part) { return t(part.key, { count: part.count }) })
+        .join(' · ')
     } else {
       label.textContent = open ? t('toolCallsOpen') : t('toolCalls')
       count.textContent = t('toolCount', { count: toolCount })
@@ -161,7 +166,10 @@ export function createFoldController(doc, options) {
           syncRoot(root)
         })
       }
-      paintBar(outer, 'outer', next.outer === 'open', group.toolCount)
+      paintBar(outer, 'outer', next.outer === 'open', {
+        thinkCount: group.thinkRows.length,
+        toolCount: group.toolCount,
+      })
       placeBefore(outer, group.startRow)
 
       for (let r = 0; r < group.thinkRows.length; r++) {
@@ -182,7 +190,7 @@ export function createFoldController(doc, options) {
             syncRoot(root)
           })
         }
-        paintBar(inner, 'inner', next.inner === 'open', group.toolCount)
+        paintBar(inner, 'inner', next.inner === 'open', { toolCount: group.toolCount })
         placeBefore(inner, group.tools[0])
       } else {
         const inner = findBar(root, group.key, 'inner')

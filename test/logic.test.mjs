@@ -6,6 +6,7 @@ import {
   groupFlowRows,
   hasVisibleNonThinkContent,
   nextElementNode,
+  processCountParts,
   reconcileFoldState,
   toggleLayer,
   visibilityOf,
@@ -129,6 +130,15 @@ test('untouched state follows running; touched state is sticky', () => {
   assert.equal(kept.outer, 'collapsed')
   assert.equal(kept.touched, true)
   assert.equal(kept.inner, 'open')
+})
+
+test('processCountParts lists thinks and tools', () => {
+  assert.deepEqual(processCountParts(3, 10), [
+    { key: 'thinks', count: 3 },
+    { key: 'tools', count: 10 },
+  ])
+  assert.deepEqual(processCountParts(2, 0), [{ key: 'thinks', count: 2 }])
+  assert.deepEqual(processCountParts(0, 0), [{ key: 'thinking', count: 0 }])
 })
 
 test('visibility implements two layers without hiding assistant text', () => {

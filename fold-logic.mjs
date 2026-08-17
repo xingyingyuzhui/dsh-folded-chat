@@ -129,6 +129,16 @@ export function toggleLayer(state, layer) {
   return next
 }
 
+export function processCountParts(thinkCount, toolCount) {
+  const thinks = thinkCount > 0 ? thinkCount : 0
+  const tools = toolCount > 0 ? toolCount : 0
+  const parts = []
+  if (thinks > 0) parts.push({ key: 'thinks', count: thinks })
+  if (tools > 0) parts.push({ key: 'tools', count: tools })
+  if (parts.length === 0) parts.push({ key: 'thinking', count: 0 })
+  return parts
+}
+
 export function visibilityOf(state, toolCount) {
   const outerOpen = state != null && state.outer === 'open'
   const innerOpen = state != null && state.inner === 'open'
