@@ -112,9 +112,15 @@ function createDoc() {
 function seat(doc, kind, key, extras) {
   const kids = []
   if (extras && extras.think) {
-    kids.push(doc.el('div', { 'data-variant': 'think', 'data-state': extras.running ? 'running' : 'ok' }))
+    const think = doc.el('div', { 'data-variant': 'think', 'data-state': extras.running ? 'running' : 'ok' })
+    think.childNodes.push({ nodeType: 3, textContent: 'reasoning', childNodes: [] })
+    kids.push(think)
   }
-  if (extras && extras.text) kids.push(doc.el('p', {}, []))
+  if (extras && extras.text) {
+    const p = doc.el('p', {})
+    p.childNodes.push({ nodeType: 3, textContent: extras.text === true ? 'answer' : String(extras.text), childNodes: [] })
+    kids.push(p)
+  }
   const row = doc.el('div', { 'data-chat-flow-kind': kind, 'data-chat-anchor-key': key })
   for (const kid of kids) row.appendChild(kid)
   return row
@@ -184,6 +190,33 @@ test('master switch off restores official nodes and removes bars', () => {
   ctrl.sync()
   assert.equal(tool.style.display, '')
   assert.equal(doc.list.querySelectorAll('[' + BAR_ATTR + ']').length, 0)
+})
+
+test('merges think-only steps into one process and hides empty rows', () => {
+  const doc = createDoc()
+  const s1 = seat(doc, 'assistant-step', 'step:a', { think: true })
+  const t1 = seat(doc, 'tool-call', 'call:a', {})
+  const s2 = seat(doc, 'assistant-step', 'step:b', { think: true })
+  const t2 = seat(doc, 'tool-call', 'call:b', {})
+  const s3 = seat(doc, 'assistant-step', 'step:c', { think: true, text: true })
+  doc.list.appendChild(s1)
+  doc.list.appendChild(t1)
+  doc.list.appendChild(s2)
+  doc.list.appendChild(t2)
+  doc.list.appendChild(s3)
+  const ctrl = createFoldController(doc)
+  ctrl.sync()
+  const outers = doc.list.querySelectorAll('[data-fold-layer="outer"]')
+  assert.equal(outers.length, 1)
+  assert.equal(s1.style.display, 'none')
+  assert.equal(s2.style.display, 'none')
+  assert.equal(t1.style.display, 'none')
+  assert.equal(t2.style.display, 'none')
+  assert.equal(s3.style.display, '')
+  assert.equal(s3.querySelector('[data-variant="think"]').style.display, 'none')
+  ctrl.dispose()
+  assert.equal(s1.style.display, '')
+  assert.equal(s2.style.display, '')
 })
 
 test('ignores rows outside data-conversation-scroll', () => {

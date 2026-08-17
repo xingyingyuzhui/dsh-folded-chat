@@ -18,6 +18,28 @@ function nextElementNode(node) {
   return current
 }
 
+function hasVisibleNonThinkContent(el) {
+  if (el == null) return false
+  function visit(node) {
+    if (node == null) return false
+    if (node.nodeType === 3) return String(node.textContent || '').trim() !== ''
+    if (node.nodeType !== 1) return false
+    if (typeof node.getAttribute === 'function') {
+      if (node.getAttribute('data-variant') === 'think') return false
+      if (node.getAttribute('data-dsh-folded-chat-bar') != null) return false
+      if (node.getAttribute('aria-hidden') === 'true') return false
+    }
+    const tag = String(node.tagName || '').toLowerCase()
+    if (tag === 'img' || tag === 'video' || tag === 'canvas' || tag === 'iframe') return true
+    const children = node.childNodes || []
+    for (let i = 0; i < children.length; i++) {
+      if (visit(children[i])) return true
+    }
+    return false
+  }
+  return visit(el)
+}
+
 function describeRow(el) {
   if (el == null || typeof el.getAttribute !== 'function') return null
   const think = typeof el.querySelector === 'function'
@@ -31,35 +53,64 @@ function describeRow(el) {
     kind: el.getAttribute('data-chat-flow-kind'),
     anchor: el.getAttribute('data-chat-anchor-key'),
     hasThink: think != null,
+    hasVisibleOutput: hasVisibleNonThinkContent(el),
     running: runningThink || runningSelf,
+  }
+}
+
+function takeProcessPiece(rows, start) {
+  const row = rows[start]
+  if (row == null || row.kind !== 'assistant-step' || row.hasThink !== true || !row.anchor) return null
+  const tools = []
+  let running = row.running === true
+  let j = start + 1
+  while (j < rows.length && rows[j] != null && rows[j].kind === 'tool-call') {
+    tools.push(rows[j])
+    if (rows[j].running === true) running = true
+    j += 1
+  }
+  return {
+    end: j,
+    step: row,
+    tools,
+    running,
+    hasVisibleOutput: row.hasVisibleOutput === true,
   }
 }
 
 function groupFlowRows(rows) {
   const groups = []
   let i = 0
+  let open = null
   while (i < rows.length) {
-    const row = rows[i]
-    if (row != null && row.kind === 'assistant-step' && row.hasThink === true && row.anchor) {
-      const tools = []
-      let running = row.running === true
-      let j = i + 1
-      while (j < rows.length && rows[j] != null && rows[j].kind === 'tool-call') {
-        tools.push(rows[j])
-        if (rows[j].running === true) running = true
-        j += 1
-      }
-      groups.push({
-        key: row.anchor,
-        thinkRow: row.el,
-        tools: tools.map((item) => item.el),
-        toolCount: tools.length,
-        running,
-      })
-      i = j
+    const piece = takeProcessPiece(rows, i)
+    if (piece == null) {
+      if (rows[i] != null && rows[i].kind !== 'tool-call') open = null
+      i += 1
       continue
     }
-    i += 1
+    if (open != null) {
+      open.thinkRows.push(piece.step.el)
+      if (piece.hasVisibleOutput !== true) open.hideRows.push(piece.step.el)
+      for (let t = 0; t < piece.tools.length; t++) open.tools.push(piece.tools[t].el)
+      open.toolCount = open.tools.length
+      if (piece.running) open.running = true
+      if (piece.hasVisibleOutput) open = null
+      i = piece.end
+      continue
+    }
+    const group = {
+      key: piece.step.anchor,
+      startRow: piece.step.el,
+      thinkRows: [piece.step.el],
+      hideRows: piece.hasVisibleOutput ? [] : [piece.step.el],
+      tools: piece.tools.map((item) => item.el),
+      toolCount: piece.tools.length,
+      running: piece.running,
+    }
+    groups.push(group)
+    open = piece.hasVisibleOutput ? null : group
+    i = piece.end
   }
   return groups
 }
@@ -466,11 +517,17 @@ function createFoldController(doc, options) {
         })
       }
       paintBar(outer, 'outer', next.outer === 'open', group.toolCount)
-      placeBefore(outer, group.thinkRow)
+      placeBefore(outer, group.startRow)
 
-      const think = thinkNode(group.thinkRow)
-      if (vis.thinkVisible) showNode(think)
-      else hideNode(think)
+      for (let r = 0; r < group.thinkRows.length; r++) {
+        const think = thinkNode(group.thinkRows[r])
+        if (vis.thinkVisible) showNode(think)
+        else hideNode(think)
+      }
+      for (let h = 0; h < group.hideRows.length; h++) {
+        if (vis.thinkVisible) showNode(group.hideRows[h])
+        else hideNode(group.hideRows[h])
+      }
 
       if (vis.innerBar) {
         let inner = findBar(root, group.key, 'inner')

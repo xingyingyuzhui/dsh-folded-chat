@@ -4,6 +4,7 @@ import {
   defaultFoldState,
   describeRow,
   groupFlowRows,
+  hasVisibleNonThinkContent,
   nextElementNode,
   reconcileFoldState,
   toggleLayer,
@@ -34,6 +35,36 @@ test('describeRow requires an official think node and stable anchor', () => {
   assert.equal(described.running, true)
 })
 
+test('hasVisibleNonThinkContent ignores think and empty wrappers', () => {
+  const think = {
+    nodeType: 1,
+    tagName: 'DIV',
+    getAttribute: (key) => (key === 'data-variant' ? 'think' : null),
+    childNodes: [{ nodeType: 3, textContent: 'hidden reasoning' }],
+  }
+  const empty = {
+    nodeType: 1,
+    tagName: 'P',
+    getAttribute: () => null,
+    childNodes: [{ nodeType: 3, textContent: '   ' }],
+  }
+  const answer = {
+    nodeType: 1,
+    tagName: 'P',
+    getAttribute: () => null,
+    childNodes: [{ nodeType: 3, textContent: '可见正文' }],
+  }
+  const row = {
+    nodeType: 1,
+    tagName: 'DIV',
+    getAttribute: () => null,
+    childNodes: [think, empty],
+  }
+  assert.equal(hasVisibleNonThinkContent(row), false)
+  row.childNodes.push(answer)
+  assert.equal(hasVisibleNonThinkContent(row), true)
+})
+
 test('groupFlowRows keeps think-only steps and following tool rows', () => {
   const think = { el: 'a', kind: 'assistant-step', anchor: 's1', hasThink: true, running: false }
   const tool1 = { el: 't1', kind: 'tool-call', anchor: 'c1', hasThink: false, running: false }
@@ -48,9 +79,31 @@ test('groupFlowRows keeps think-only steps and following tool rows', () => {
   assert.equal(groups[0].key, 's1')
   assert.deepEqual(groups[0].tools, ['t1', 't2'])
   assert.equal(groups[0].running, true)
+  assert.deepEqual(groups[0].hideRows, ['a'])
   assert.equal(groups[1].key, 's2')
   assert.equal(groups[1].toolCount, 0)
   assert.equal(groups[1].running, false)
+})
+
+test('groupFlowRows merges think-only steps until visible output', () => {
+  const s1 = { el: 's1', kind: 'assistant-step', anchor: 'a1', hasThink: true, hasVisibleOutput: false, running: false }
+  const t1 = { el: 't1', kind: 'tool-call', anchor: 'c1', hasThink: false, running: false }
+  const s2 = { el: 's2', kind: 'assistant-step', anchor: 'a2', hasThink: true, hasVisibleOutput: false, running: true }
+  const t2 = { el: 't2', kind: 'tool-call', anchor: 'c2', hasThink: false, running: false }
+  const s3 = { el: 's3', kind: 'assistant-step', anchor: 'a3', hasThink: true, hasVisibleOutput: true, running: false }
+  const t3 = { el: 't3', kind: 'tool-call', anchor: 'c3', hasThink: false, running: false }
+  const user = { el: 'u', kind: 'user-message', anchor: 'u1', hasThink: false, running: false }
+  const s4 = { el: 's4', kind: 'assistant-step', anchor: 'a4', hasThink: true, hasVisibleOutput: true, running: false }
+
+  const groups = groupFlowRows([s1, t1, s2, t2, s3, t3, user, s4])
+  assert.equal(groups.length, 2)
+  assert.equal(groups[0].key, 'a1')
+  assert.deepEqual(groups[0].thinkRows, ['s1', 's2', 's3'])
+  assert.deepEqual(groups[0].hideRows, ['s1', 's2'])
+  assert.deepEqual(groups[0].tools, ['t1', 't2', 't3'])
+  assert.equal(groups[0].running, true)
+  assert.equal(groups[1].key, 'a4')
+  assert.deepEqual(groups[1].hideRows, [])
 })
 
 test('groupFlowRows skips assistant-step rows without a stable key', () => {

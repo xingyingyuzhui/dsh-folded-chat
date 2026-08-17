@@ -162,11 +162,17 @@ export function createFoldController(doc, options) {
         })
       }
       paintBar(outer, 'outer', next.outer === 'open', group.toolCount)
-      placeBefore(outer, group.thinkRow)
+      placeBefore(outer, group.startRow)
 
-      const think = thinkNode(group.thinkRow)
-      if (vis.thinkVisible) showNode(think)
-      else hideNode(think)
+      for (let r = 0; r < group.thinkRows.length; r++) {
+        const think = thinkNode(group.thinkRows[r])
+        if (vis.thinkVisible) showNode(think)
+        else hideNode(think)
+      }
+      for (let h = 0; h < group.hideRows.length; h++) {
+        if (vis.thinkVisible) showNode(group.hideRows[h])
+        else hideNode(group.hideRows[h])
+      }
 
       if (vis.innerBar) {
         let inner = findBar(root, group.key, 'inner')
