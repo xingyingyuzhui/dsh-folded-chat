@@ -1,6 +1,6 @@
 {
   "name": "dsh-folded-chat",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Two-level fold for DeepSeek Harness chat: collapse think+tools as a process, then fold tool rows separately. Official cards stay intact. 聊天主视图两层折叠：过程一层、工具一层，不替换官方卡片。",
   "keywords": ["dsh", "dsh-plugin", "deepseek-harness", "chat", "fold"],
   "license": "MIT",
