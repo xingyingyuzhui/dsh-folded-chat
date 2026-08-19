@@ -85,6 +85,7 @@ export function registerSettings(ctx, React, store, t) {
   return slots.inject('settings.plugin.item', function () {
     return slots.register({
       name: 'settings.plugin.item',
+      id: 'dsh-folded-chat',
       key: 'dsh-folded-chat',
       order: 100,
       label: function () { return t('cardTitle') },
